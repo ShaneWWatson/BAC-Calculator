@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0d15">
+<title>BAC Tracker - Texas</title>
+<style>
+  :root {
+    --gold:     #f0a500;
+    --gold-dim: #7a5300;
+    --gold-bg:  rgba(240,165,0,0.10);
+    --green:    #34d399;
+    --amber:    #fbbf24;
+    --red:      #f87171;
+    --bg:       #0d0d15;
+    --bg2:      #151520;
+    --bg3:      #1c1c2a;
+    --border:   rgba(255,255,255,0.09);
+    --text:     #e8e0d0;
+    --muted:    #7a7060;
+    --faint:    #302820;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, serif;
+    overflow-x: hidden;
+  }
+
+  body { padding-bottom: env(safe-area-inset-bottom, 16px); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .screen { display: none; min-height: 100vh; padding: 0 16px 32px; animation: fadeUp 0.35s ease; }
+  .screen.active { display: block; }
+
+  .header { padding-top: max(env(safe-area-inset-top), 20px); }
+
+  .logo-row { display: flex; align-items: baseline; gap: 8px; padding-top: 8px; }
+  .logo-bac { font-size: 28px; font-weight: 700; color: var(--gold); letter-spacing: -0.5px; }
+  .logo-sub { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .logo-state { margin-left: auto; font-size: 11px; letter-spacing: 0.1em; color: var(--gold-dim); padding: 3px 8px; border: 1px solid var(--gold-dim); border-radius: 20px; text-transform: uppercase; }
+
+  .divider { height: 1px; background: linear-gradient(to right, var(--gold), transparent); margin: 8px 0 22px; }
+
+  .field { margin-bottom: 18px; }
+  .field-label { display: block; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+  input[type="number"],
+  input[type="text"] {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 17px;
+    font-family: Georgia, serif;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  input:focus { border-color: var(--gold-dim); }
+  input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+  input.invalid { border-color: var(--red); }
+
+  .seg-row { display: flex; gap: 10px; }
+  .seg {
+    flex: 1; padding: 12px 6px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg2); color: var(--muted); cursor: pointer;
+    font-family: Georgia, serif; font-size: 14px; text-align: center; transition: all 0.15s;
+  }
+  .seg.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+
+  .hint { font-size: 11px; color: var(--faint); margin-top: 6px; line-height: 1.5; }
+
+  .btn-primary {
+    width: 100%; padding: 16px; background: linear-gradient(135deg, var(--gold), #c97f00);
+    border: none; border-radius: 14px; color: #0a0a0f;
+    font-family: Georgia, serif; font-size: 16px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.04em; margin-top: 8px;
+  }
+
+  .btn-outline {
+    width: 100%; padding: 13px; border: 1px dashed rgba(240,165,0,0.4);
+    border-radius: 14px; background: var(--gold-bg); color: var(--gold);
+    font-family: Georgia, serif; font-size: 15px; cursor: pointer; letter-spacing: 0.04em;
+  }
+
+  .btn-cancel {
+    flex: 1; padding: 13px; border: 1px solid var(--border); border-radius: 12px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: Georgia, serif; font-size: 14px;
+  }
+
+  .btn-log {
+    flex: 2; padding: 13px; background: linear-gradient(135deg, var(--gold), #c97f00);
+    border: none; border-radius: 12px; color: #0a0a0f;
+    font-family: Georgia, serif; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .btn-ghost {
+    background: none; border: none; color: var(--faint); cursor: pointer;
+    font-size: 12px; font-family: Georgia, serif; text-decoration: underline;
+    display: block; margin: 0 auto; padding: 4px;
+  }
+
+  .btn-uber {
+    display: none; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 15px; background: #ffffff; border: none; border-radius: 14px;
+    color: #000000; font-family: Georgia, serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.02em; text-decoration: none; margin-bottom: 12px;
+  }
+  .btn-uber.visible { display: flex; }
+  .btn-uber svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .btn-er {
+    display: none; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 15px; background: var(--red); border: none; border-radius: 14px;
+    color: #ffffff; font-family: Georgia, serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.02em; text-decoration: none; margin-bottom: 12px;
+  }
+  .btn-er.visible { display: flex; }
+  .btn-er svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .geo-status {
+    font-size: 12px; color: var(--muted); text-align: center;
+    margin-bottom: 8px; min-height: 16px;
+  }
+
+  .gauge-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
+    padding: 24px 16px 18px; text-align: center; margin-bottom: 14px; transition: border-color 0.5s;
+  }
+
+  .bac-num { font-size: 52px; font-weight: 700; font-family: monospace; letter-spacing: -2px; transition: color 0.5s; line-height: 1; }
+  .bac-unit { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+
+  .status-pill {
+    display: inline-block; margin-top: 10px; padding: 5px 16px;
+    border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid; transition: all 0.5s;
+  }
+
+  .sober-eta { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .sober-eta span { color: var(--gold); font-weight: 600; }
+  .profile-note { margin-top: 6px; font-size: 11px; color: var(--faint); }
+
+  .tx-card { border-radius: 16px; padding: 16px; margin-bottom: 14px; border: 1px solid; transition: all 0.5s; }
+  .tx-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .tx-icon { font-size: 18px; }
+  .tx-title { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+  .tx-body { font-size: 13px; line-height: 1.6; }
+  .tx-limit { font-size: 11px; color: var(--muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+  .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 18px; margin-bottom: 14px; }
+  .panel-title { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+  .tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab {
+    flex: 1; padding: 9px; border: 1px solid var(--border); border-radius: 10px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: Georgia, serif; font-size: 14px; transition: all 0.15s;
+  }
+  .tab.on { border-color: var(--gold); color: var(--gold); background: var(--gold-bg); }
+
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .preset-card { padding: 11px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg3); cursor: pointer; text-align: left; transition: all 0.15s; }
+  .preset-card.on { border-color: var(--gold); background: var(--gold-bg); }
+  .pc-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .preset-card.on .pc-name { color: var(--gold); }
+  .pc-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .custom-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .custom-row > div { flex: 1; }
+  .btn-row { display: flex; gap: 10px; }
+
+  .log-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 18px; margin-bottom: 14px; }
+  .drink-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
+  .di-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .di-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .rm-btn { background: none; border: none; color: var(--faint); cursor: pointer; font-size: 20px; padding: 2px 6px; border-radius: 6px; flex-shrink: 0; line-height: 1; }
+  .clear-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); cursor: pointer; font-size: 12px; font-family: Georgia, serif; margin-top: 4px; }
+
+  .disclaimer { font-size: 11px; color: var(--faint); text-align: center; line-height: 1.7; padding: 0 8px; margin-bottom: 12px; }
+
+  .install-banner { display: none; background: var(--bg3); border: 1px solid var(--gold-dim); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .install-banner strong { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<div class="screen active" id="screen-setup">
+  <div class="header">
+    <div class="logo-row">
+      <span class="logo-bac">BAC</span>
+      <span class="logo-sub">Tracker</span>
+      <span class="logo-state">Texas</span>
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <div class="install-banner" id="install-banner">
+    <strong>Install as app:</strong> Tap the browser menu and choose <em>"Add to Home screen"</em> to use this like a native app.
+  </div>
+
+  <p style="color:var(--muted);margin-bottom:24px;font-size:15px;line-height:1.7">
+    Enter your details to track your BAC and get real-time Texas driving guidance.
+  </p>
+
+  <div class="field">
+    <label class="field-label">Body weight (lbs)</label>
+    <input type="number" id="inp-weight" min="0" max="700" placeholder="e.g. 165" inputmode="numeric"
+           oninput="clearOnExceed(this, 0, 700)" onkeydown="clearOnDash(event, this)">
+  </div>
+
+  <div class="field">
+    <label class="field-label">Biological sex</label>
+    <div class="seg-row">
+      <button class="seg on" id="btn-male"   onclick="setSex('male')">Male</button>
+      <button class="seg"    id="btn-female" onclick="setSex('female')">Female</button>
+    </div>
+    <p class="hint">Used for the Widmark r-factor</p>
+  </div>
+
+  <div class="field">
+    <label class="field-label">Age group <span style="font-size:10px">(for Texas law)</span></label>
+    <div class="seg-row">
+      <button class="seg on" id="btn-adult" onclick="setAge('adult')">21+</button>
+      <button class="seg"    id="btn-minor" onclick="setAge('minor')">Under 21</button>
+      <button class="seg"    id="btn-cdl"   onclick="setAge('cdl')">CDL</button>
+    </div>
+    <p class="hint">Texas applies different limits by age and license type</p>
+  </div>
+
+  <button class="btn-primary" onclick="startTracking()">Start tracking</button>
+</div>
+
+<div class="screen" id="screen-tracker">
+  <div class="header">
+    <div class="logo-row">
+      <span class="logo-bac">BAC</span>
+      <span class="logo-sub">Tracker</span>
+      <span class="logo-state">Texas</span>
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <div class="gauge-card" id="gauge-card">
+    <svg width="220" height="116" viewBox="0 0 220 116" style="overflow:visible;display:block;margin:0 auto" aria-hidden="true">
+      <path id="arc-track" d="" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="10" stroke-linecap="round"/>
+      <path id="arc-fill"  d="" fill="none" stroke-width="10" stroke-linecap="round" style="display:none;transition:all 0.5s"/>
+      <circle id="arc-dot" cx="37" cy="100" r="5" style="transition:all 0.5s"/>
+      <text id="lbl-min" font-size="9" fill="#302820" text-anchor="end">0.00</text>
+      <text id="lbl-max" font-size="9" fill="#302820" text-anchor="start">0.50</text>
+    </svg>
+    <div class="bac-num" id="bac-display">0.000</div>
+    <div class="bac-unit">% BAC</div>
+    <div class="status-pill" id="status-pill">Sober</div>
+    <div class="sober-eta" id="sober-eta" style="display:none">Sober in <span id="sober-val"></span></div>
+    <div class="profile-note" id="profile-note"></div>
+  </div>
+
+  <div class="tx-card" id="tx-card">
+    <div class="tx-header">
+      <span class="tx-icon" id="tx-icon">&#x2705;</span>
+      <span class="tx-title" id="tx-title" style="color:var(--green)">LEGAL TO DRIVE IN TEXAS</span>
+    </div>
+    <div class="tx-body" id="tx-body">Your estimated BAC is 0.000%. No alcohol has been logged.</div>
+    <div class="tx-limit" id="tx-limit"></div>
+  </div>
+
+  <div class="geo-status" id="geo-status"></div>
+
+  <a id="uber-er-btn" class="btn-er" href="#" onclick="callUberER(event)">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm1 14.93V15a1 1 0 00-2 0v1.93A6.01 6.01 0 016.07 13H7a1 1 0 000-2h-.93A6.01 6.01 0 0111 6.07V7a1 1 0 002 0v-.93A6.01 6.01 0 0117.93 11H17a1 1 0 000 2h.93A6.01 6.01 0 0113 16.93zM12 13a1 1 0 110-2 1 1 0 010 2z"/>
+    </svg>
+    Emergency - Get Ride to Nearest ER
+  </a>
+
+  <a id="uber-btn" class="btn-uber" href="#" onclick="callUber(event)">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4.5a3 3 0 110 6 3 3 0 010-6zm6 13.5H6v-1.5c0-3.314 2.686-6 6-6s6 2.686 6 6V18z"/>
+    </svg>
+    Call a Ride with Uber
+  </a>
+
+  <div id="add-btn-wrap">
+    <button class="btn-outline" onclick="openPanel()">+ Add a drink</button>
+  </div>
+  <div style="height:12px"></div>
+
+  <div class="panel" id="add-panel" style="display:none">
+    <div class="panel-title">Log a drink</div>
+    <div class="tab-row">
+      <button class="tab on" id="tab-preset" onclick="switchTab('preset')">Presets</button>
+      <button class="tab"    id="tab-custom" onclick="switchTab('custom')">Custom</button>
+    </div>
+    <div id="preset-section">
+      <div class="preset-grid" id="preset-grid"></div>
+    </div>
+    <div id="custom-section" style="display:none">
+      <div class="field" style="margin-bottom:12px">
+        <label class="field-label">Drink name</label>
+        <input type="text" id="c-name" value="My drink">
+      </div>
+      <div class="custom-row">
+        <div>
+          <label class="field-label">ABV %</label>
+          <input type="number" id="c-abv" min="0" max="100" step="0.1" value="5" inputmode="decimal"
+                 oninput="clampInput(this, 0, 100)" onkeydown="clearOnDash(event, this)">
+        </div>
+        <div>
+          <label class="field-label">fl oz</label>
+          <input type="number" id="c-oz" min="0" max="128" step="0.5" value="12" inputmode="decimal"
+                 oninput="clampInput(this, 0, 128)" onkeydown="clearOnDash(event, this)">
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closePanel()">Cancel</button>
+      <button class="btn-log"    onclick="logDrink()">+ Log drink</button>
+    </div>
+  </div>
+
+  <div class="log-panel" id="log-panel" style="display:none">
+    <div class="panel-title">Drink log</div>
+    <div id="drink-list"></div>
+    <button class="clear-btn" onclick="clearAll()">Clear all</button>
+  </div>
+
+  <p class="disclaimer">For informational purposes only. BAC estimates vary by individual. If in doubt, do not drive.</p>
+  <button class="btn-ghost" onclick="goBack()">Change profile</button>
+  <div style="height:8px"></div>
+</div>
+
+<script>
+  const METABOLISM_RATE  = 0.015;
+  const WIDMARK_R        = { male: 0.68, female: 0.55 };
+  const ML_PER_OZ        = 29.5735;
+  const G_PER_ML_ETHANOL = 0.789;
+  const G_PER_LB         = 453.592;
+  const BAC_MAX          = 0.50;
+  const BAC_ER_THRESHOLD = 0.20;
+  const GAUGE_RADIUS     = 80;
+  const GAUGE_CX         = 110;
+  const GAUGE_CY         = 100;
+  const GAUGE_START      = -210;
+  const GAUGE_END        = 30;
+
+  const PRESETS = [
+    { name: 'Beer (regular)', abv: 5,  oz: 12  },
+    { name: 'Beer (IPA)',     abv: 7,  oz: 12  },
+    { name: 'Wine',           abv: 13, oz: 5   },
+    { name: 'Shot',           abv: 40, oz: 1.5 },
+    { name: 'Cocktail',       abv: 15, oz: 4   },
+    { name: 'Hard seltzer',   abv: 5,  oz: 12  },
+  ];
+
+  const TX_LIMITS = { adult: 0.08, cdl: 0.04, minor: 0 };
+  const TX_LIMIT_LABELS = {
+    adult: 'Age 21+ - Texas DWI limit is 0.08% BAC (Tex. Penal Code sec. 49.04)',
+    cdl:   'CDL holders - Texas legal limit is 0.04% BAC',
+    minor: 'Under 21 - zero tolerance; any detectable BAC is illegal in Texas',
+  };
+
+  let sex            = 'male';
+  let ageGroup       = 'adult';
+  let drinks         = [];
+  let selectedPreset = 0;
+  let activeTab      = 'preset';
+  let userCoords     = null;
+
+  function clearOnExceed(input, min, max) {
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && (val < min || val > max)) {
+      input.value = '';
+      input.classList.add('invalid');
+    } else {
+      input.classList.remove('invalid');
+    }
+  }
+
+  function clearOnDash(event, input) {
+    if (event.key === '-' || event.key === 'Subtract') {
+      event.preventDefault();
+      input.value = '';
+      input.classList.remove('invalid');
+    }
+  }
+
+  function clampInput(input, min, max) {
+    let val = parseFloat(input.value);
+    if (isNaN(val)) return;
+    if (val < min) input.value = min;
+    if (val > max) input.value = max;
+    input.classList.toggle('invalid', val < min || val > max);
+  }
+
+  const toRad = deg => deg * Math.PI / 180;
+
+  function gaugePoint(angle) {
+    return {
+      x: GAUGE_CX + GAUGE_RADIUS * Math.cos(toRad(angle)),
+      y: GAUGE_CY + GAUGE_RADIUS * Math.sin(toRad(angle)),
+    };
+  }
+
+  function gaugeArcPath(a1, a2, largeArc) {
+    const s = gaugePoint(a1);
+    const e = gaugePoint(a2);
+    return `M ${s.x.toFixed(1)} ${s.y.toFixed(1)} A ${GAUGE_RADIUS} ${GAUGE_RADIUS} 0 ${largeArc} 1 ${e.x.toFixed(1)} ${e.y.toFixed(1)}`;
+  }
+
+  function initGauge() {
+    document.getElementById('arc-track').setAttribute('d', gaugeArcPath(GAUGE_START, GAUGE_END, 1));
+    const s = gaugePoint(GAUGE_START);
+    const e = gaugePoint(GAUGE_END);
+    const lMin = document.getElementById('lbl-min');
+    const lMax = document.getElementById('lbl-max');
+    lMin.setAttribute('x', s.x - 6); lMin.setAttribute('y', s.y + 4);
+    lMax.setAttribute('x', e.x + 6); lMax.setAttribute('y', e.y + 4);
+  }
+
+  function calcBAC() {
+    const weightLbs     = parseFloat(document.getElementById('inp-weight').value) || 160;
+    const r             = WIDMARK_R[sex];
+    const weightG       = weightLbs * G_PER_LB;
+    const totalAlcoholG = drinks.reduce((sum, d) => {
+      return sum + d.oz * ML_PER_OZ * (d.abv / 100) * G_PER_ML_ETHANOL;
+    }, 0);
+    if (!totalAlcoholG) return 0;
+    const oldestTime   = Math.min(...drinks.map(d => d.time));
+    const hoursElapsed = (Date.now() - oldestTime) / 3_600_000;
+    const raw = (totalAlcoholG / (weightG * r)) * 100 - METABOLISM_RATE * hoursElapsed;
+    return Math.min(Math.max(raw, 0), BAC_MAX);
+  }
+
+  function bacStatusStyle(bac) {
+    if (bac < 0.001) return { label: 'Sober',            color: '#34d399', bg: 'rgba(52,211,153,0.12)'  };
+    if (bac < 0.04)  return { label: 'Minimal effect',   color: '#34d399', bg: 'rgba(52,211,153,0.12)'  };
+    if (bac < 0.08)  return { label: 'Buzzed',           color: '#fbbf24', bg: 'rgba(251,191,36,0.12)'  };
+    if (bac < 0.15)  return { label: 'Impaired',         color: '#fb923c', bg: 'rgba(251,146,60,0.12)'  };
+    if (bac < 0.25)  return { label: 'Heavily impaired', color: '#f87171', bg: 'rgba(248,113,113,0.12)' };
+    return                  { label: 'Danger zone',      color: '#ef4444', bg: 'rgba(239,68,68,0.12)'   };
+  }
+
+  function applyCardStyle(color, bg, iconText, titleText) {
+    const card  = document.getElementById('tx-card');
+    const icon  = document.getElementById('tx-icon');
+    const title = document.getElementById('tx-title');
+    card.style.borderColor = color;
+    card.style.background  = bg;
+    icon.textContent       = iconText;
+    title.style.color      = color;
+    title.textContent      = titleText;
+  }
+
+  function updateTexasCard(bac) {
+    const limit   = TX_LIMITS[ageGroup];
+    const body    = document.getElementById('tx-body');
+    const uberBtn = document.getElementById('uber-btn');
+    const erBtn   = document.getElementById('uber-er-btn');
+
+    document.getElementById('tx-limit').textContent = TX_LIMIT_LABELS[ageGroup];
+
+    let showUber = false;
+    let showER   = false;
+
+    if (bac >= BAC_ER_THRESHOLD) {
+      applyCardStyle('#ef4444', 'rgba(239,68,68,0.10)', '\uD83D\uDEA8', 'MEDICAL EMERGENCY RISK');
+      body.textContent = `Your BAC (${bac.toFixed(3)}%) is dangerously high. Alcohol poisoning is a medical emergency. Do not drive. Get help immediately.`;
+      showUber = false;
+      showER   = true;
+    } else if (ageGroup === 'minor' && bac > 0) {
+      applyCardStyle('#f87171', 'rgba(248,113,113,0.08)', '\uD83D\uDEAB', 'DO NOT DRIVE - ZERO TOLERANCE');
+      body.textContent = 'Texas law prohibits drivers under 21 from operating a vehicle with any detectable amount of alcohol.';
+      showUber = true;
+    } else if (bac === 0 && ageGroup === 'minor') {
+      applyCardStyle('#34d399', 'rgba(52,211,153,0.08)', '\u2705', 'NO ALCOHOL DETECTED');
+      body.textContent = 'No alcohol logged. Remember: Texas has zero tolerance for drivers under 21.';
+    } else if (bac === 0) {
+      applyCardStyle('#34d399', 'rgba(52,211,153,0.08)', '\u2705', 'LEGAL TO DRIVE IN TEXAS');
+      body.textContent = 'Your estimated BAC is 0.000%. No alcohol has been logged.';
+    } else if (bac < limit * 0.75) {
+      applyCardStyle('#34d399', 'rgba(52,211,153,0.08)', '\u2705', 'LEGAL TO DRIVE IN TEXAS');
+      body.textContent = `Your estimated BAC (${bac.toFixed(3)}%) is below the Texas legal limit of ${limit.toFixed(2)}%. Always use caution.`;
+    } else if (bac < limit) {
+      applyCardStyle('#fbbf24', 'rgba(251,191,36,0.08)', '\u26A0\uFE0F', 'APPROACHING LEGAL LIMIT');
+      body.textContent = `Your BAC (${bac.toFixed(3)}%) is close to the Texas limit of ${limit.toFixed(2)}%. Do not drive - impairment begins below the legal limit.`;
+      showUber = true;
+    } else {
+      applyCardStyle('#f87171', 'rgba(248,113,113,0.08)', '\uD83D\uDEAB', 'DO NOT DRIVE - ILLEGAL IN TEXAS');
+      body.textContent = `Your BAC (${bac.toFixed(3)}%) exceeds the Texas legal limit of ${limit.toFixed(2)}%. Driving is a criminal DWI offense and extremely dangerous.`;
+      showUber = true;
+    }
+
+    uberBtn.classList.toggle('visible', showUber);
+    erBtn.classList.toggle('visible',   showER);
+  }
+
+  function requestGeolocation(onSuccess, onFailure) {
+    const geoStatus = document.getElementById('geo-status');
+    if (!navigator.geolocation) {
+      geoStatus.textContent = 'Location unavailable on this device.';
+      onFailure();
+      return;
+    }
+    geoStatus.textContent = 'Getting your location...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        geoStatus.textContent = 'Location found.';
+        setTimeout(() => { geoStatus.textContent = ''; }, 3000);
+        onSuccess(userCoords);
+      },
+      () => {
+        geoStatus.textContent = 'Location access denied. Opening Uber without coordinates.';
+        setTimeout(() => { geoStatus.textContent = ''; }, 4000);
+        onFailure();
+      },
+      { timeout: 8000, maximumAge: 60_000 }
+    );
+  }
+
+  function buildUberERUrl(coords) {
+    if (coords) {
+      return `https://m.uber.com/ul/?action=setPickup`
+        + `&pickup[latitude]=${coords.lat}&pickup[longitude]=${coords.lng}`
+        + `&dropoff[nickname]=Nearest%20Emergency%20Room`
+        + `&dropoff[formattedAddress]=Emergency%20Room`;
+    }
+    return 'https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[nickname]=Emergency%20Room';
+  }
+
+  function buildUberUrl(coords) {
+    if (coords) {
+      return `https://m.uber.com/ul/?action=setPickup`
+        + `&pickup[latitude]=${coords.lat}&pickup[longitude]=${coords.lng}`;
+    }
+    return 'https://m.uber.com/ul/?action=setPickup&pickup=my_location';
+  }
+
+  function launchUber(url) {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = 'uber://';
+    document.body.appendChild(iframe);
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+      window.location.href = url;
+    }, 1500);
+  }
+
+  function callUberER(event) {
+    event.preventDefault();
+    if (userCoords) {
+      launchUber(buildUberERUrl(userCoords));
+      return;
+    }
+    requestGeolocation(
+      (coords) => launchUber(buildUberERUrl(coords)),
+      ()       => launchUber(buildUberERUrl(null))
+    );
+  }
+
+  function callUber(event) {
+    event.preventDefault();
+    if (userCoords) {
+      launchUber(buildUberUrl(userCoords));
+      return;
+    }
+    requestGeolocation(
+      (coords) => launchUber(buildUberUrl(coords)),
+      ()       => launchUber(buildUberUrl(null))
+    );
+  }
+
+  function formatEta(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return h ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  function refresh() {
+    const bac         = calcBAC();
+    const pct         = Math.min(bac / BAC_MAX, 1);
+    const needleAngle = GAUGE_START + (GAUGE_END - GAUGE_START) * pct;
+    const status      = bacStatusStyle(bac);
+    const fill        = document.getElementById('arc-fill');
+    const dot         = document.getElementById('arc-dot');
+
+    if (pct > 0) {
+      fill.setAttribute('d', gaugeArcPath(GAUGE_START, needleAngle, pct > 0.5 ? 1 : 0));
+      fill.style.display = '';
+    } else {
+      fill.style.display = 'none';
+    }
+
+    const ep = gaugePoint(needleAngle);
+    dot.setAttribute('cx', ep.x.toFixed(1));
+    dot.setAttribute('cy', ep.y.toFixed(1));
+    fill.style.stroke = status.color;
+    dot.style.fill    = status.color;
+
+    document.getElementById('gauge-card').style.borderColor = status.color + '44';
+
+    const display = document.getElementById('bac-display');
+    display.textContent = bac.toFixed(3);
+    display.style.color = status.color;
+
+    const pill = document.getElementById('status-pill');
+    pill.textContent       = status.label;
+    pill.style.color       = status.color;
+    pill.style.borderColor = status.color + '55';
+    pill.style.background  = status.bg;
+
+    const etaEl = document.getElementById('sober-eta');
+    if (bac > 0) {
+      const mins = Math.ceil((bac / METABOLISM_RATE) * 60);
+      document.getElementById('sober-val').textContent = formatEta(mins);
+      etaEl.style.display = '';
+    } else {
+      etaEl.style.display = 'none';
+    }
+
+    updateTexasCard(bac);
+  }
+
+  function setSex(s) {
+    sex = s;
+    document.getElementById('btn-male').classList.toggle('on',   s === 'male');
+    document.getElementById('btn-female').classList.toggle('on', s === 'female');
+  }
+
+  function setAge(a) {
+    ageGroup = a;
+    ['btn-adult', 'btn-minor', 'btn-cdl'].forEach(id => {
+      document.getElementById(id).classList.remove('on');
+    });
+    document.getElementById(`btn-${a}`).classList.add('on');
+  }
+
+  function startTracking() {
+    const weight = parseFloat(document.getElementById('inp-weight').value);
+    if (!weight || weight <= 0 || weight > 700) {
+      alert('Please enter a valid weight (1-700 lbs).');
+      return;
+    }
+    document.getElementById('screen-setup').classList.remove('active');
+    document.getElementById('screen-tracker').classList.add('active');
+    const ageLabels = { adult: '21+', minor: 'under 21', cdl: 'CDL driver' };
+    document.getElementById('profile-note').textContent = `${weight} lbs - ${sex} - ${ageLabels[ageGroup]}`;
+    initGauge();
+    buildPresets();
+    refresh();
+    window.scrollTo(0, 0);
+    // Pre-fetch location so Uber buttons respond instantly
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+        () => {},
+        { timeout: 10_000, maximumAge: 60_000 }
+      );
+    }
+  }
+
+  function goBack() {
+    drinks = [];
+    userCoords = null;
+    renderLog();
+    document.getElementById('screen-tracker').classList.remove('active');
+    document.getElementById('screen-setup').classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  function openPanel() {
+    document.getElementById('add-btn-wrap').style.display = 'none';
+    document.getElementById('add-panel').style.display = '';
+  }
+
+  function closePanel() {
+    document.getElementById('add-btn-wrap').style.display = '';
+    document.getElementById('add-panel').style.display = 'none';
+  }
+
+  function switchTab(t) {
+    activeTab = t;
+    document.getElementById('tab-preset').classList.toggle('on', t === 'preset');
+    document.getElementById('tab-custom').classList.toggle('on', t === 'custom');
+    document.getElementById('preset-section').style.display = t === 'preset' ? '' : 'none';
+    document.getElementById('custom-section').style.display = t === 'custom'  ? '' : 'none';
+  }
+
+  function buildPresets() {
+    const grid = document.getElementById('preset-grid');
+    grid.innerHTML = '';
+    PRESETS.forEach((preset, i) => {
+      const btn = document.createElement('button');
+      btn.className = `preset-card${i === 0 ? ' on' : ''}`;
+      btn.innerHTML = `<div class="pc-name">${preset.name}</div><div class="pc-sub">${preset.abv}% &middot; ${preset.oz} fl oz</div>`;
+      btn.onclick = () => {
+        selectedPreset = i;
+        document.querySelectorAll('.preset-card').forEach((el, j) => {
+          el.classList.toggle('on', j === i);
+        });
+      };
+      grid.appendChild(btn);
+    });
+  }
+
+  function logDrink() {
+    let name, abv, oz;
+    if (activeTab === 'preset') {
+      ({ name, abv, oz } = PRESETS[selectedPreset]);
+    } else {
+      name = document.getElementById('c-name').value || 'Drink';
+      abv  = Math.max(0, parseFloat(document.getElementById('c-abv').value) || 0);
+      oz   = Math.max(0, parseFloat(document.getElementById('c-oz').value)  || 0);
+      if (abv === 0 && oz === 0) {
+        alert('Please enter a valid ABV and amount.');
+        return;
+      }
+    }
+    drinks.push({ id: Date.now(), name, abv, oz, time: Date.now() });
+    closePanel();
+    renderLog();
+    refresh();
+  }
+
+  function removeDrink(id) {
+    drinks = drinks.filter(d => d.id !== id);
+    renderLog();
+    refresh();
+  }
+
+  function clearAll() {
+    drinks = [];
+    renderLog();
+    refresh();
+  }
+
+  function timeAgo(ms) {
+    const minutes = (Date.now() - ms) / 60_000;
+    if (minutes < 1)  return 'just now';
+    if (minutes < 60) return `${Math.floor(minutes)}m ago`;
+    return `${Math.floor(minutes / 60)}h ${Math.floor(minutes % 60)}m ago`;
+  }
+
+  function renderLog() {
+    const logPanel  = document.getElementById('log-panel');
+    const drinkList = document.getElementById('drink-list');
+    if (!drinks.length) { logPanel.style.display = 'none'; return; }
+    logPanel.style.display = '';
+    drinkList.innerHTML = [...drinks].reverse().map(d => `
+      <div class="drink-item">
+        <div style="flex:1">
+          <div class="di-name">${d.name}</div>
+          <div class="di-meta">${d.abv}% &middot; ${d.oz} fl oz &middot; ${timeAgo(d.time)}</div>
+        </div>
+        <button class="rm-btn" onclick="removeDrink(${d.id})" aria-label="Remove">&times;</button>
+      </div>`).join('');
+  }
+
+  setInterval(() => { if (drinks.length) refresh(); }, 30_000);
+
+  window.addEventListener('load', () => {
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('install-banner').style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>
